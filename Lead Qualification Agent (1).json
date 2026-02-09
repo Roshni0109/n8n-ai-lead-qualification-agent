@@ -1,0 +1,334 @@
+{
+  "name": "Lead Qualification Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Work with us",
+        "formDescription": "Provide us with your details and we`ll  be in touch!",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "What is your name?",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "What is your company`s website?",
+              "placeholder": "e.g. https://jpmorgan.com",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "How can we help you?",
+              "fieldType": "textarea",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Enter Email Address",
+              "fieldType": "email",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "9d96ce2b-4592-4888-bc4d-40d8c40462be",
+      "name": "On form submission",
+      "webhookId": "cf2637ee-f782-49ae-96ed-ce17e0dc0477"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api-f1db6c.stack.tryrelevance.com/latest/studios/67469045-0c5b-4205-a209-6194892f00f4/trigger_webhook?project=c58783c5-0109-4e53-b5ec-0e768b134921",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"company_url\":\"{{ $json['What is your company`s website?'] }}\"}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "43e90087-9b45-4fe6-9277-c7f4eb96cfa9",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an inbound lead qualification agent. Your job is to analyze the form submission and company research provided and decide whether they are qualified to work with Big Boy Recruits, a Dallas based recruitment firm. Big Boy Recruits specializes in IT and tech talent placements. We are specialists in capturing talent post liquidation and can therefore provide talent to our clients as we hit the market. We only work with Software based businesses, e.g. SaaS companies or development agencies. These companies are willing to pay much more developers than your average marketing company or local business, therefore we only work with them. Your job is to determine if the lead you are provided with is a good fit for Big Boy Recruits, and if so call the 'lead_is_qualified' tool and send the lead information to it. If the lead is not qualified, then you must trigger the Gmail send email tool for us to respond to them letting them know we are unable to help them.\nHere is the lead information for you to analyze:\nName:{{ $('On form submission').item.json['What is your name?'] }}\nCompany URL:{{ $('On form submission').item.json['What is your company`s website?'] }}\nMessage/Request:{{ $('On form submission').item.json['How can we help you?'] }}\nCompany Research:{{ $json.answer }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "a3af92e3-4ed4-44f9-9a31-735ac7be6ab8",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        288,
+        208
+      ],
+      "id": "8c45f584-00d1-488b-9925-9845c52507ea",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "U8j5SdSYrNuF5133",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=We have a new inbound lead and we need you to classify it into either SaaS or development agency category.Here is the lead information:\nName:{{ $('On form submission').item.json['What is your name?'] }} \nRequest:{{ $json.output }}\nCompany Information:{{ $('HTTP Request').item.json.answer }}\nIf the lead a SaaS company, output 'SaaS'If the lead is a development agency, output 'Agency'\""
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        768,
+        32
+      ],
+      "id": "02a529f5-4bf6-497e-8a6d-4d4e2b312e0a",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "U8j5SdSYrNuF5133",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2039f7a9-f9ae-4bea-b107-2de63d36b2dd",
+              "leftValue": "={{ $json.content.parts[0].text }}",
+              "rightValue": "Agency",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1120,
+        32
+      ],
+      "id": "2f7f3440-c4eb-40e3-a449-2741d9be5f1e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('On form submission').item.json['Enter Email Address'] }}",
+        "subject": "New Agency Lead",
+        "emailType": "text",
+        "message": "=New Agency Lead MAN! Go gettem: {{ $('HTTP Request').item.json.answer }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1376,
+        0
+      ],
+      "id": "41dbb248-bc8b-42b1-87a9-710fb7483aa9",
+      "name": "New Agency Lead",
+      "webhookId": "dde4888e-8c5f-4d6c-a3a4-1bec10471b97",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "cRdoeBNdqdDrKZS7",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('On form submission').item.json['Enter Email Address'] }}",
+        "subject": "Thanks for your interest!",
+        "emailType": "text",
+        "message": "=Hi {{ $('On form submission').item.json['What is your name?'] }},\nThanks for your interest in Big Boy Recruitment services! AS we specialze in recruitment for software businesses such as SaaS and development agencies, we're not a good fit for you based on your company's industry.Please let me know if you'd like us to connect you with one of our partners who specialzies in dealing with your needs.Cheers,Huge Jackman Head of Sales, Big Boy Recruits (BBR)Dallas, TX",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        576,
+        208
+      ],
+      "id": "f23ccf8b-ada1-493f-8d81-23af6dbeda2c",
+      "name": "Send a message in Gmail",
+      "webhookId": "ddcf1640-e719-48d3-b273-fc634daeacd5",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "cRdoeBNdqdDrKZS7",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "=roshnimultani0103@gmail.com",
+        "subject": "New Saas Lead",
+        "emailType": "text",
+        "message": "=New Agency Lead MAN! Go gettem: {{ $('HTTP Request').item.json.answer }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1376,
+        176
+      ],
+      "id": "751d07a7-4758-4921-a7c7-ab9f052c9b41",
+      "name": "New Saas Lead1",
+      "webhookId": "dde4888e-8c5f-4d6c-a3a4-1bec10471b97",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "cRdoeBNdqdDrKZS7",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "New Agency Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "New Saas Lead1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message in Gmail": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "bc8ae8aa-f8d7-4c8d-8ffb-357918c50593",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ccbad54de3e117ba6bf2fc1c5dd7c8d360adb4753834b23b4afda900becd5d54"
+  },
+  "id": "UTn-CTrjPNVdMu6gSSlEz",
+  "tags": []
+}
